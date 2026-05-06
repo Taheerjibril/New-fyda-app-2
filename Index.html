@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CommunityOrg Portal</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #17212b; color: #fff; height: 100vh; overflow: hidden; display: flex; }
+
+  /* Sidebar */
+  #sidebar { width: 260px; background: #17212b; border-right: 1px solid #0d1821; display: flex; flex-direction: column; transition: width 0.2s; overflow: hidden; flex-shrink: 0; }
+  #sidebar.collapsed { width: 64px; }
+  .sidebar-header { padding: 16px 12px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #0d1821; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#3390ec,#1a6cc7); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+  .user-info { overflow: hidden; }
+  .user-name { font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .user-role { font-size: 12px; color: #3390ec; }
+  #toggleBtn { margin-left: auto; background: none; border: none; color: #8e99a4; cursor: pointer; font-size: 18px; flex-shrink: 0; }
+  nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+  .nav-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-radius: 8px; margin: 2px 6px; color: #c8d0d7; transition: background 0.15s; }
+  .nav-item:hover { background: #1e2d3d; }
+  .nav-item.active { background: #2b5278; color: #fff; font-weight: 600; }
+  .nav-icon { font-size: 18px; flex-shrink: 0; }
+  .nav-label { font-size: 14px; white-space: nowrap; }
+  #sidebar.collapsed .nav-label,
+  #sidebar.collapsed .user-info,
+  #sidebar.collapsed .org-footer { display: none; }
+  .org-footer { padding: 12px 16px; border-top: 1px solid #0d1821; font-size: 11px; color: #4a5568; text-align: center; }
+
+  /* Main */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { background: #17212b; border-bottom: 1px solid #0d1821; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar-title { font-weight: 700; font-size: 16px; }
+  .topbar-sub { font-size: 12px; color: #8e99a4; }
+  .online-badge { background: #2b5278; border-radius: 20px; padding: 6px 14px; font-size: 12px; color: #3390ec; font-weight: 600; }
+  #content { flex: 1; overflow-y: auto; background: #0e1621; }
+
+  /* Pages */
+  .page { display: none; padding: 24px; }
+  .page.active { display: block; }
+  #chat-page { display: none; height: 100%; }
+  #chat-page.active { display: flex; }
+
+  /* Cards grid */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: #17212b; border-radius: 12px; padding: 20px 18px; }
+  .stat-icon { font-size: 24px; margin-bottom: 8px; }
+  .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: #8e99a4; margin-top: 4px; }
+
+  /* Panel */
+  .panel { background: #17212b; border-radius: 12px; padding: 20px; }
+  .panel-title { font-weight: 700; font-size: 14px; margin-bottom: 14px; }
+  .divider { border-bottom: 1px solid #0d1821; }
+
+  /* Member row */
+  .member-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #0d1821; }
+  .member-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#3390ec,#2980b9); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .member-name { font-size: 13px; font-weight: 600; }
+  .member-role { font-size: 11px; color: #8e99a4; }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+  .badge-paid { background: #1a3a1a; color: #2ecc71; }
+  .badge-unpaid { background: #3a1a1a; color: #e74c3c; }
+  .badge-present { background: #1a3a2a; color: #1abc9c; }
+  .badge-absent { background: #2a2a2a; color: #8e99a4; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { padding: 8px 12px; border-bottom: 1px solid #0d1821; font-weight: 600; color: #8e99a4; text-align: left; }
+  tbody td { padding: 12px; border-bottom: 1px solid #0d1821; }
+  .btn-primary { background: #3390ec; border: none; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .table-title { font-weight: 700; font-size: 15px; }
+
+  /* Progress bar */
+  .progress-wrap { background: #0d1821; border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 4px; transition: width 0.5s; }
+
+  /* Attendance */
+  .attend-row { padding: 14px 0; border-bottom: 1px solid #0d1821; }
+  .attend-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .attend-topic { font-weight: 600; font-size: 13px; }
+  .attend-date { font-size: 11px; color: #8e99a4; margin-top: 2px; }
+  .attend-count { color: #3390ec; font-weight: 700; font-size: 14px; }
+
+  /* Projects */
+  .project-card { background: #17212b; border-radius: 12px; padding: 18px; margin-bottom: 12px; }
+  .project-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .project-title { font-weight: 600; font-size: 14px; }
+  .project-meta { font-size: 11px; color: #8e99a4; margin-top: 3px; }
+  .project-pct { font-size: 12px; font-weight: 700; }
+  .status-section-title { font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+
+  /* Chat */
+  #chat-rooms { width: 240px; background: #17212b; border-right: 1px solid #0d1821; overflow-y: auto; flex-shrink: 0; }
+  .rooms-header { padding: 14px 16px; font-size: 12px; font-weight: 700; color: #8e99a4; text-transform: uppercase; letter-spacing: 1px; }
+  .room-item { padding: 12px 16px; cursor: pointer; border-radius: 8px; margin: 2px 6px; display: flex; gap: 10px; align-items: center; }
+  .room-item:hover { background: #1e2d3d; }
+  .room-item.active { background: #2b5278; }
+  .room-icon { width: 40px; height: 40px; border-radius: 50%; background: #0d1821; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .room-name { font-size: 13px; font-weight: 600; }
+  .room-last { font-size: 11px; color: #8e99a4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+  .room-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .room-time { font-size: 10px; color: #8e99a4; }
+  .unread-badge { background: #3390ec; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
+  #chat-main { flex: 1; display: flex; flex-direction: column; }
+  .chat-header { padding: 12px 20px; background: #17212b; border-bottom: 1px solid #0d1821; font-weight: 700; font-size: 14px; }
+  #messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .msg-wrap { display: flex; }
+  .msg-wrap.me { justify-content: flex-end; }
+  .msg-bubble { max-width: 65%; padding: 10px 14px; }
+  .msg-bubble.them { background: #182533; border-radius: 16px 16px 16px 4px; }
+  .msg-bubble.me { background: #2b5278; border-radius: 16px 16px 4px 16px; }
+  .msg-sender { font-size: 11px; color: #3390ec; font-weight: 600; margin-bottom: 4px; }
+  .msg-text { font-size: 13px; }
+  .msg-time { font-size: 10px; color: #8e99a4; text-align: right; margin-top: 4px; }
+  .chat-input-bar { padding: 12px 20px; background: #17212b; border-top: 1px solid #0d1821; display: flex; gap: 10px; align-items: center; }
+  #msgInput { flex: 1; background: #0d1821; border: none; border-radius: 20px; padding: 10px 16px; color: #fff; font-size: 13px; outline: none; }
+  #msgInput::placeholder { color: #8e99a4; }
+  #sendBtn { background: #3390ec; border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  /* Meetings */
+  .meeting-hero { background: #17212b; border-radius: 12px; padding: 24px; margin-bottom: 20px; text-align: center; }
+  .meeting-emoji { font-size: 48px; margin-bottom: 12px; }
+  .meeting-title { font-weight: 700; font-size: 18px; margin-bottom: 8px; }
+  .meeting-sub { color: #8e99a4; font-size: 13px; margin-bottom: 20px; }
+  .meeting-btns { display: flex; gap: 12px; justify-content: center; }
+  .btn-secondary { background: #2b5278; border: none; color: #fff; padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .btn-accent { background: #3390ec; border: none; color: #fff; padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .meeting-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #0d1821; align-items: center; }
+  .meeting-icon-box { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+
+  /* Donations */
+  .donations-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .donation-summary { background: #17212b; border-radius: 12px; padding: 20px; }
+  .donation-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #0d1821; align-items: center; }
+  .donation-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .donation-name { font-weight: 600; font-size: 13px; }
+  .donation-note { font-size: 11px; color: #8e99a4; margin-top: 2px; }
+  .donation-amount { font-weight: 700; font-size: 14px; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div class="avatar">AJ</div>
+    <div class="user-info">
+      <div class="user-name">Alex Johnson</div>
+      <div class="user-role">Admin</div>
+    </div>
+    <button id="toggleBtn">☰</button>
+  </div>
+  <nav id="nav"></nav>
+  <div class="org-footer">🏛️ CommunityOrg v1.0</div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="pageTitle">Dashboard</div>
+      <div class="topbar-sub">Community Organization Portal</div>
+    </div>
+    <div class="online-badge">🟢 Online</div>
+  </div>
+
+  <div id="content">
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-page" class="page active">
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="panel">
+        <div class="panel-title">👤 Members Overview</div>
+        <div id="membersList"></div>
+      </div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div id="payments-page" class="page">
+      <div class="panel">
+        <div class="table-header">
+          <div class="table-title">💳 Monthly Dues — May 2026</div>
+          <button class="btn-primary">+ Record Payment</button>
+        </div>
+        <table>
+          <thead><tr><th>Member</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="paymentsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE -->
+    <div id="attendance-page" class="page">
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-title">✅ Attendance Records</div>
+        <div id="attendanceList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📌 Member Attendance Summary</div>
+        <div id="attendanceSummary"></div>
+      </div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div id="projects-page" class="page">
+      <div id="projectsList"></div>
+    </div>
+
+    <!-- CHAT -->
+    <div id="chat-page">
+      <div id="chat-rooms">
+        <div class="rooms-header">Chat Rooms</div>
+        <div id="roomsList"></div>
+      </div>
+      <div id="chat-main">
+        <div class="chat-header" id="chatHeader"></div>
+        <div id="messages"></div>
+        <div class="chat-input-bar">
+          <input id="msgInput" placeholder="Write a message..." />
+          <button id="sendBtn">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEETINGS -->
+    <div id="meetings-page" class="page">
+      <div class="meeting-hero">
+        <div class="meeting-emoji">📹</div>
+        <div class="meeting-title">Online Meetings</div>
+        <div class="meeting-sub">Start or join a video meeting for officials and members</div>
+        <div class="meeting-btns">
+          <button class="btn-accent">📹 Start Meeting</button>
+          <button class="btn-secondary">🔗 Join with Link</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📅 Scheduled Meetings</div>
+        <div id="meetingsList"></div>
+      </div>
+    </div>
+
+    <!-- DONATIONS -->
+    <div id="donations-page" class="page">
+      <div class="donations-grid">
+        <div class="donation-summary" style="border-left:3px solid #2ecc71">
+          <div style="font-size:22px">📥</div>
+          <div style="font-size:24px;font-weight:700;color:#2ecc71;margin-top:8px">₦250,000</div>
+          <div style="font-size:12px;color:#8e99a4;margin-top:4px">Total Received</div>
+        </div>
+        <div class="donation-summary" style="border-left:3px solid #e74c3c">
+          <div style="font-size:22px">📤</div>
+          <div style="font-size:24px;font-weight:700;color:#e74c3c;margin-top:8px">₦50,000</div>
+          <div style="font-size:12px;color:#8e99a4;margin-top:4px">Total Donated Out</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🤝 Donation Ledger</div>
+        <div id="donationsList"></div>
+      </div>
+    </div>
+
+  </div><!-- end #content -->
+</div><!-- end #main -->
+
+<script>
+// ─── Data ───────────────────────────────────────────────
+const navItems = [
+  { id: "dashboard", icon: "⊞", label: "Dashboard" },
+  { id: "payments", icon: "💳", label: "Payments" },
+  { id: "attendance", icon: "✅", label: "Attendance" },
+  { id: "projects", icon: "📋", label: "Projects" },
+  { id: "chat", icon: "💬", label: "Chat" },
+  { id: "meetings", icon: "📹", label: "Meetings" },
+  { id: "donations", icon: "🤝", label: "Donations" },
+];
+
+const members = [
+  { id:1, name:"Alex Johnson",  role:"Admin",    paid:true,  attended:true,  avatar:"AJ" },
+  { id:2, name:"Maria Santos",  role:"Official", paid:true,  attended:false, avatar:"MS" },
+  { id:3, name:"David Kim",     role:"Member",   paid:false, attended:true,  avatar:"DK" },
+  { id:4, name:"Priya Patel",   role:"Member",   paid:true,  attended:true,  avatar:"PP" },
+  { id:5, name:"James Okafor", role:"Official", paid:false, attended:false, avatar:"JO" },
+];
+
+const payments = [
+  { id:1, member:"Alex Johnson",  amount:500, date:"May 1, 2026",  status:"Paid" },
+  { id:2, member:"Maria Santos",  amount:500, date:"May 1, 2026",  status:"Paid" },
+  { id:3, member:"David Kim",     amount:500, date:"-",            status:"Overdue" },
+  { id:4, member:"Priya Patel",   amount:500, date:"Apr 28, 2026", status:"Paid" },
+  { id:5, member:"James Okafor", amount:500, date:"-",            status:"Pending" },
+];
+
+const projects = [
+  { id:1, title:"Community Water Borehole",          status:"achieved", progress:100, lead:"Maria Santos",  date:"Mar 2026" },
+  { id:2, title:"Youth Skills Empowerment Program",  status:"ongoing",  progress:65,  lead:"Alex Johnson",  date:"Jun 2026" },
+  { id:3, title:"Health Outreach & Free Clinic Day", status:"ongoing",  progress:30,  lead:"Priya Patel",   date:"Aug 2026" },
+  { id:4, title:"Community Library Renovation",      status:"future",   progress:0,   lead:"David Kim",     date:"Dec 2026" },
+  { id:5, title:"Annual Scholarship Fund Drive",     status:"future",   progress:0,   lead:"James Okafor", date:"Jan 2027" },
+];
+
+const chatRooms = [
+  { id:"general",  name:"General Members",    icon:"👥", last:"Meeting this Friday 6pm!", time:"10:22",    unread:3 },
+  { id:"officials",name:"Officials Only 🔒",   icon:"🛡️", last:"Budget review completed.", time:"09:45",    unread:1 },
+  { id:"projects", name:"Projects Committee", icon:"📋", last:"Borehole handover done!", time:"Yesterday", unread:0 },
+];
+
+const chatMessages = {
+  general:  [
+    { from:"Maria Santos", text:"Good morning everyone! 🌅",           time:"09:00", me:false },
+    { from:"Priya Patel",  text:"Morning! Don't forget our meeting this Friday 6pm!", time:"09:05", me:false },
+    { from:"You",          text:"Thanks for the reminder 👍",           time:"09:10", me:true  },
+    { from:"James Okafor",text:"Meeting this Friday 6pm!",             time:"10:22", me:false },
+  ],
+  officials:[
+    { from:"Maria Santos", text:"Budget review completed. Sending report now.", time:"09:45", me:false },
+    { from:"You",          text:"Great work team!",                             time:"09:50", me:true  },
+  ],
+  projects: [
+    { from:"Alex Johnson", text:"Borehole handover done! Community is happy 🎉", time:"Yesterday", me:false },
+  ],
+};
+
+const donations = [
+  { id:1, type:"received", from:"Anonymous Donor", amount:50000,  date:"Apr 20, 2026", note:"For youth program" },
+  { id:2, type:"received", from:"GovGrant 2026",   amount:200000, date:"Mar 15, 2026", note:"Community development" },
+  { id:3, type:"donated",  to:"Local Orphanage",   amount:30000,  date:"Apr 25, 2026", note:"Easter outreach" },
+  { id:4, type:"donated",  to:"Flood Relief Fund", amount:20000,  date:"May 1, 2026",  note:"Emergency response" },
+];
+
+const attendanceData = [
+  { date:"Apr 4, 2026",  topic:"Monthly General Meeting", present:4, total:5 },
+  { date:"Mar 7, 2026",  topic:"Budget Planning",          present:5, total:5 },
+  { date:"Feb 7, 2026",  topic:"Project Review",           present:3, total:5 },
+  { date:"Jan 10, 2026", topic:"Year Kickoff",             present:5, total:5 },
+];
+
+const scheduledMeetings = [
+  { title:"Monthly General Meeting", date:"May 9, 2026 · 6:00 PM",  host:"Alex Johnson",  type:"All Members",    color:"#3390ec" },
+  { title:"Officials Budget Review", date:"May 14, 2026 · 4:00 PM", host:"Maria Santos",  type:"Officials Only", color:"#e74c3c" },
+  { title:"Projects Committee",      date:"May 21, 2026 · 5:00 PM", host:"Priya Patel",   type:"Committee",      color:"#f39c12" },
+];
+
+const statusColor = { achieved:"#2ecc71", ongoing:"#3390ec", future:"#8e99a4" };
+const statusLabel = { achieved:"✅ Achieved", ongoing:"🔄 Ongoing", future:"📅 Future" };
+
+// ─── State ───────────────────────────────────────────────
+let activeNav = "dashboard";
+let activeRoom = "general";
+let messages = JSON.parse(JSON.stringify(chatMessages)); // deep copy
+
+// ─── Build Nav ───────────────────────────────────────────
+const navEl = document.getElementById("nav");
+navItems.forEach(item => {
+  const div = document.createElement("div");
+  div.className = "nav-item" + (item.id === activeNav ? " active" : "");
+  div.dataset.id = item.id;
+  div.innerHTML = `<span class="nav-icon">${item.icon}</span><span class="nav-label">${item.label}</span>`;
+  div.addEventListener("click", () => navigate(item.id));
+  navEl.appendChild(div);
+});
+
+function navigate(id) {
+  // hide old page
+  const oldPage = document.getElementById(activeNav + "-page");
+  if (oldPage) oldPage.classList.remove("active");
+
+  // update nav
+  document.querySelectorAll(".nav-item").forEach(el => el.classList.toggle("active", el.dataset.id === id));
+
+  activeNav = id;
+  document.getElementById("pageTitle").textContent = navItems.find(n => n.id === id)?.label || "";
+
+  // show new page
+  const newPage = document.getElementById(id + "-page");
+  if (newPage) newPage.classList.add("active");
+
+  if (id === "chat") renderChatRoom(activeRoom);
+}
+
+// ─── Sidebar toggle ──────────────────────────────────────
+document.getElementById("toggleBtn").addEventListener("click", () => {
+  document.getElementById("sidebar").classList.toggle("collapsed");
+});
+
+// ─── Dashboard ───────────────────────────────────────────
+const stats = [
+  { label:"Total Members",  value:"5",     icon:"👥", color:"#3390ec" },
+  { label:"Dues Collected", value:"₦1,500",icon:"💳", color:"#2ecc71" },
+  { label:"Overdue",        value:"2",     icon:"⚠️", color:"#e74c3c" },
+  { label:"Active Projects",value:"2",     icon:"📋", color:"#f39c12" },
+  { label:"Total Donations",value:"₦250K", icon:"🤝", color:"#9b59b6" },
+  { label:"Attendance Rate",value:"75%",   icon:"✅", color:"#1abc9c" },
+];
+const statGrid = document.getElementById("statGrid");
+stats.forEach(s => {
+  const div = document.createElement("div");
+  div.className = "stat-card";
+  div.style.borderLeft = `3px solid ${s.color}`;
+  div.innerHTML = `<div class="stat-icon">${s.icon}</div><div class="stat-value" style="color:${s.color}">${s.value}</div><div class="stat-label">${s.label}</div>`;
+  statGrid.appendChild(div);
+});
+
+const membersList = document.getElementById("membersList");
+members.forEach(m => {
+  membersList.innerHTML += `
+    <div class="member-row">
+      <div class="member-avatar">${m.avatar}</div>
+      <div style="flex:1">
+        <div class="member-name">${m.name}</div>
+        <div class="member-role">${m.role}</div>
+      </div>
+      <span class="badge ${m.paid ? 'badge-paid' : 'badge-unpaid'}">${m.paid ? 'Paid' : 'Unpaid'}</span>
+      <span class="badge ${m.attended ? 'badge-present' : 'badge-absent'}">${m.attended ? 'Present' : 'Absent'}</span>
+    </div>`;
+});
+
+// ─── Payments ────────────────────────────────────────────
+const statusStyles = {
+  Paid:    { bg:"#1a3a1a", color:"#2ecc71" },
+  Overdue: { bg:"#3a1a1a", color:"#e74c3c" },
+  Pending: { bg:"#2a2a1a", color:"#f39c12" },
+};
+const paymentsBody = document.getElementById("paymentsBody");
+payments.forEach(p => {
+  const s = statusStyles[p.status];
+  paymentsBody.innerHTML += `
+    <tr>
+      <td>${p.member}</td>
+      <td style="color:#3390ec">₦${p.amount}</td>
+      <td style="color:#8e99a4">${p.date}</td>
+      <td><span style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;background:${s.bg};color:${s.color}">${p.status}</span></td>
+    </tr>`;
+});
+
+// ─── Attendance ───────────────────────────────────────────
+const attendanceList = document.getElementById("attendanceList");
+attendanceData.forEach(a => {
+  const pct = (a.present / a.total) * 100;
+  const barColor = a.present === a.total ? "#2ecc71" : "#3390ec";
+  attendanceList.innerHTML += `
+    <div class="attend-row">
+      <div class="attend-top">
+        <div>
+          <div class="attend-topic">${a.topic}</div>
+          <div class="attend-date">${a.date}</div>
+        </div>
+        <div class="attend-count">${a.present}/${a.total}</div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" style="background:${barColor};width:${pct}%"></div></div>
+    </div>`;
+});
+
+const attendanceSummary = document.getElementById("attendanceSummary");
+members.forEach(m => {
+  attendanceSummary.innerHTML += `
+    <div class="member-row">
+      <div style="width:34px;height:34px;border-radius:50%;background:#2b5278;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${m.avatar}</div>
+      <div style="flex:1;font-size:13px">${m.name}</div>
+      <span class="badge ${m.attended ? 'badge-present' : 'badge-absent'}">${m.attended ? '✔ Present' : '✖ Absent'}</span>
+    </div>`;
+});
+
+// ─── Projects ────────────────────────────────────────────
+const projectsList = document.getElementById("projectsList");
+["achieved","ongoing","future"].forEach(status => {
+  const filtered = projects.filter(p => p.status === status);
+  if (!filtered.length) return;
+  const section = document.createElement("div");
+  section.style.marginBottom = "24px";
+  section.innerHTML = `<div class="status-section-title" style="color:${statusColor[status]}">${statusLabel[status]}</div>`;
+  filtered.forEach(p => {
+    section.innerHTML += `
+      <div class="project-card" style="border-left:3px solid ${statusColor[status]}">
+        <div class="project-header">
+          <div>
+            <div class="project-title">${p.title}</div>
+            <div class="project-meta">Lead: ${p.lead} · ${p.date}</div>
+          </div>
+          <span class="project-pct" style="color:${statusColor[status]}">${p.progress}%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" style="background:${statusColor[status]};width:${p.progress}%"></div></div>
+      </div>`;
+  });
+  projectsList.appendChild(section);
+});
+
+// ─── Chat ─────────────────────────────────────────────────
+const roomsList = document.getElementById("roomsList");
+chatRooms.forEach(r => {
+  const div = document.createElement("div");
+  div.className = "room-item" + (r.id === activeRoom ? " active" : "");
+  div.dataset.id = r.id;
+  div.innerHTML = `
+    <div class="room-icon">${r.icon}</div>
+    <div style="flex:1;overflow:hidden">
+      <div class="room-name">${r.name}</div>
+      <div class="room-last">${r.last}</div>
+    </div>
+    <div class="room-meta">
+      <div class="room-time">${r.time}</div>
+      ${r.unread > 0 ? `<div class="unread-badge">${r.unread}</div>` : ""}
+    </div>`;
+  div.addEventListener("click", () => {
+    document.querySelectorAll(".room-item").forEach(el => el.classList.toggle("active", el.dataset.id === r.id));
+    activeRoom = r.id;
+    renderChatRoom(r.id);
+  });
+  roomsList.appendChild(div);
+});
+
+function renderChatRoom(roomId) {
+  const room = chatRooms.find(r => r.id === roomId);
+  document.getElementById("chatHeader").textContent = `${room.icon} ${room.name}`;
+  const msgsEl = document.getElementById("messages");
+  msgsEl.innerHTML = "";
+  (messages[roomId] || []).forEach(msg => {
+    const wrap = document.createElement("div");
+    wrap.className = "msg-wrap" + (msg.me ? " me" : "");
+    wrap.innerHTML = `
+      <div class="msg-bubble ${msg.me ? 'me' : 'them'}">
+        ${!msg.me ? `<div class="msg-sender">${msg.from}</div>` : ""}
+        <div class="msg-text">${msg.text}</div>
+        <div class="msg-time">${msg.time}</div>
+      </div>`;
+    msgsEl.appendChild(wrap);
+  });
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+document.getElementById("sendBtn").addEventListener("click", sendMessage);
+document.getElementById("msgInput").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+
+function sendMessage() {
+  const input = document.getElementById("msgInput");
+  const text = input.value.trim();
+  if (!text) return;
+  const now = new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+  messages[activeRoom].push({ from:"You", text, time:now, me:true });
+  input.value = "";
+  renderChatRoom(activeRoom);
+}
+
+// ─── Meetings ────────────────────────────────────────────
+const meetingsList = document.getElementById("meetingsList");
+scheduledMeetings.forEach(m => {
+  meetingsList.innerHTML += `
+    <div class="meeting-item">
+      <div class="meeting-icon-box" style="background:${m.color}22">📹</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${m.title}</div>
+        <div style="font-size:11px;color:#8e99a4;margin-top:3px">${m.date} · Host: ${m.host}</div>
+      </div>
+      <span style="font-size:11px;padding:3px 10px;border-radius:10px;background:#0d1821;color:${m.color};font-weight:600">${m.type}</span>
+    </div>`;
+});
+
+// ─── Donations ────────────────────────────────────────────
+const donationsList = document.getElementById("donationsList");
+donations.forEach(d => {
+  const isReceived = d.type === "received";
+  donationsList.innerHTML += `
+    <div class="donation-item">
+      <div class="donation-avatar" style="background:${isReceived ? '#1a3a1a' : '#3a1a1a'}">${isReceived ? '📥' : '📤'}</div>
+      <div style="flex:1">
+        <div class="donation-name">${isReceived ? `From: ${d.from}` : `To: ${d.to}`}</div>
+        <div class="donation-note">${d.note} · ${d.date}</div>
+      </div>
+      <span class="donation-amount" style="color:${isReceived ? '#2ecc71' : '#e74c3c'}">${isReceived ? '+' : '-'}₦${d.amount.toLocaleString()}</span>
+    </div>`;
+});
+
+// Init chat header
+renderChatRoom(activeRoom);
+</script>
+</body>
+</html>
